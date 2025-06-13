@@ -8,11 +8,17 @@
 #include "mm.h"
 #include "vm.h"
 #include "spinlock.h"
-
+#include "inc/syscall.h"
 #include "dev.h"
 #include "debug.h"
 #include "file.h"
 #include "log.h"
+
+typedef struct {
+    int pid;
+    char name[32];
+    char state;
+} proc_info_t;
 
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
@@ -447,4 +453,30 @@ procdump()
             cprintf("%d %s %s\n", p->pid, states[p->state], p->name);
     }
     // release(&ptable.lock);
+}
+
+int
+get_proc_info_by_index(int index, proc_info_t *info)
+{
+    int current_index = 0;
+    for (int i = 0; i < NPROC; i++) {
+        if (ptable.proc[i].state != UNUSED) {
+            if (current_index == index) {
+                info->pid = ptable.proc[i].pid;
+                switch (ptable.proc[i].state) {
+                    case EMBRYO:   info->state = 'E'; break;
+                    case SLEEPING: info->state = 'S'; break;
+                    case RUNNABLE: info->state = 'R'; break;
+                    case RUNNING:  info->state = 'U'; break;
+                    case ZOMBIE:   info->state = 'Z'; break;
+                    default:       info->state = '?';
+                }
+                strncpy(info->name, ptable.proc[i].name, sizeof(info->name) - 1);
+                info->name[sizeof(info->name) - 1] = '\0';
+                return 0;
+            }
+            current_index++;
+        }
+    }
+    return -1;
 }

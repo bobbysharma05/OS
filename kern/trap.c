@@ -16,7 +16,7 @@ trap_init()
 {
     extern char vectors[];
     lvbar(vectors);
-    lesr(0);
+    lesr();
 }
 
 void
@@ -25,7 +25,7 @@ trap(struct trapframe *tf)
     int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK, il =
         resr() & IR_MASK;
     /* Clear esr. */
-    lesr(0);
+    lesr();
     switch (ec) {
     case EC_UNKNOWN:
         if (il) {
