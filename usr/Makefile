@@ -1,49 +1,58 @@
--include ../config.mk
+include ../config.mk
 
 LIBC_A = ../libc/lib/libc.a
-LIBC_SPEC = ../libc/lib/musl-gcc.specs
-LIBC_LIBS = $(wildcard ../libc/lib/*)
-LIBC_INCS = $(wildcard ../libc/obj/include/**/*) $(wildcard ../libc/include/**/*)
-LIBC_DEPS = $(LIBC_LIBS) $(LIBC_INCS)
+LIBC_DEPS = $(LIBC_A)
 
 OBJ = ../obj/usr
-LIBC_SPEC_OUT = $(OBJ)/musl-gcc.specs
+BIN = $(OBJ)/bin
 
-USR_CC := $(CC) -specs $(LIBC_SPEC_OUT)
+# Build ps, init, and sh
+UPROGS = ps init sh
 
-# -z max-page-size: https://stackoverflow.com/questions/33005638/how-to-change-alignment-of-code-segment-in-elf
-CFLAGS = -std=gnu99 -O3 -MMD -MP -static -z max-page-size=4096 \
+USER_BINS := $(UPROGS:%=$(BIN)/%)
+
+CFLAGS = -std=gnu99 -Os -MMD -MP -static -z max-page-size=4096 \
   -fno-omit-frame-pointer \
+  -I. \
+  -I.. \
+  -I../inc \
+  -I../libc/include/ \
   -I../libc/obj/include/ \
   -I../libc/arch/aarch64/ \
   -I../libc/arch/generic/
 
-BIN := $(OBJ)/bin
-SRC := src
+LDFLAGS = -L../libc/lib/ -nostartfiles ../libc/lib/crt1.o ../libc/lib/crti.o -lc ../libc/lib/crtn.o
 
-USER_DIRS := $(shell find $(SRC) -maxdepth 1 -mindepth 1 -type d)
-USER_BINS := $(USER_DIRS:$(SRC)/%=$(BIN)/%)
+USR_CC := $(CC)
 
 all:
 	$(MAKE) -C ../libc
-	mkdir -p $(dir $(LIBC_SPEC_OUT))
-	# Replace "/usr/local/musl" to "../libc"
-	sed -e "s/\/usr\/local\/musl/..\/libc/g" $(LIBC_SPEC) > $(LIBC_SPEC_OUT)
+	mkdir -p $(BIN)
 	$(MAKE) $(USER_BINS)
 
-$(OBJ)/%.c.o: %.c $(LIBC_DEPS)
-	mkdir -p $(dir $@)
+# Common object files
+$(OBJ)/syscall.o: syscall.c
+	mkdir -p $(OBJ)
 	$(USR_CC) $(CFLAGS) -c -o $@ $<
-	
-# Same as `bin/NAME: $(OBJ)/NAME/*.c.o $(LIBC_A)`
-# NOTE: Static library should be at last.
-.SECONDEXPANSION:
-$(BIN)/%: $$(addsuffix .o, $$(addprefix $(OBJ)/, $$(shell find $(SRC)/% -name "*.c")))
+
+$(OBJ)/usys.o: usys.S
+	mkdir -p $(OBJ)
+	$(USR_CC) $(CFLAGS) -c -o $@ $<
+
+# Rule for ps program
+$(BIN)/ps: src/ps/ps.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_DEPS)
 	mkdir -p $(dir $@)
-	$(USR_CC) $(CFLAGS) -o $@ $^
-	$(OBJDUMP) -S -d $@ > $(OBJ)/src/$(notdir $@)/$(notdir $@).asm
-	$(OBJDUMP) -x $@ > $(OBJ)/src/$(notdir $@)/$(notdir $@).hdr
-	$(STRIP) --strip-debug $@
+	$(USR_CC) $(CFLAGS) $(LDFLAGS) -o $@ src/ps/ps.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_A)
+
+# Rule for init program  
+$(BIN)/init: src/init/main.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_DEPS)
+	mkdir -p $(dir $@)
+	$(USR_CC) $(CFLAGS) $(LDFLAGS) -o $@ src/init/main.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_A)
+
+# Rule for sh program
+$(BIN)/sh: src/sh/main.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_DEPS)
+	mkdir -p $(dir $@)
+	$(USR_CC) $(CFLAGS) $(LDFLAGS) -o $@ src/sh/main.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_A)
 
 clean:
 	rm -rf $(OBJ) $(BIN)

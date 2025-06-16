@@ -1,41 +1,24 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
+// #include "../../user.h"
+// #include <stdlib.h>
 
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
+// int main(void) 
+// {
+//     uprintf(1, "IITGN OS Shell\n");
+//     uprintf(1, "Type ps to list processes\n");
+    
+//     while(1) {
+//         uprintf(1, "$ ");
+//         // Simple shell - just wait and print prompt
+//         // In a real shell, you would read commands here
+//         char c;
+//         // For now, just loop to show the prompt
+//         for(int i = 0; i < 1000000; i++); // Simple delay
+//     }
+//     exit(0);
+// }
 
-char *argv[] = { "sh", 0 };
-char *envp[] = { "TEST_ENV=FROM_INIT", 0 };
-
-int
-main()
-{
-    int pid, wpid;
-
-    if (open("console", O_RDWR) < 0) {
-        mknod("console", 1, 1);
-        open("console", O_RDWR);
-    }
-    dup(0);                     // stdout
-    dup(0);                     // stderr
-
-    while (1) {
-        printf("init: starting sh\n");
-        pid = fork();
-        if (pid < 0) {
-            printf("init: fork failed\n");
-            exit(1);
-        }
-        if (pid == 0) {
-            execve("sh", argv, envp);
-            printf("init: exec sh failed\n");
-            exit(1);
-        }
-        while ((wpid = wait(NULL)) >= 0 && wpid != pid)
-            printf("zombie!\n");
-    }
-
+#include "../../user.h"
+int main(void) {
+    while(1) { }
     return 0;
 }

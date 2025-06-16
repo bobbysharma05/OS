@@ -1,12 +1,6 @@
 // Shell.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/wait.h>
-
+#include "../../user.h"
 
 // Parsed command representation
 #define EXEC  1
@@ -58,17 +52,18 @@ void panic(char *);
 struct cmd *parsecmd(char *);
 
 void *
-malloc1(size_t sz)
+malloc1(int sz)  // Changed size_t to int
 {
 #define MAXN  10000
     static char mem[MAXN];
-    static size_t i;
+    static int i;  // Changed size_t to int
     if ((i += sz) > MAXN) {
-        fprintf(stderr, "malloc1: memory used out\n");
+        uprintf(2, "malloc1: memory used out\n");
         exit(1);
     }
     return &mem[i - sz];
 }
+
 
 // Execute cmd.  Never returns.
 void
@@ -92,15 +87,38 @@ runcmd(struct cmd *cmd)
         ecmd = (struct execcmd *)cmd;
         if (ecmd->argv[0] == 0)
             exit(0);
-        execv(ecmd->argv[0], ecmd->argv);
-        fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
+            
+        // Built-in ps command
+        if(strcmp(ecmd->argv[0], "ps") == 0) {
+            proc_info_t info;
+            int index = 0;
+            
+            uprintf(1, "PID   STATE     NAME\n");
+            while (get_proc_info_by_index(index, &info) == 0) {
+                char *state_str;
+                switch (info.state) {
+                    case 'E': state_str = "EMBRYO"; break;
+                    case 'S': state_str = "SLEEPING"; break;
+                    case 'R': state_str = "RUNNABLE"; break;
+                    case 'U': state_str = "RUNNING"; break;
+                    case 'Z': state_str = "ZOMBIE"; break;
+                    default: state_str = "UNKNOWN";
+                }
+                uprintf(1, "%-6d %-10s %s\n", info.pid, state_str, info.name);
+                index++;
+            }
+            exit(0);
+        }
+        
+        exec(ecmd->argv[0], ecmd->argv);
+        uprintf(2, "exec %s failed\n", ecmd->argv[0]);
         break;
 
     case REDIR:
         rcmd = (struct redircmd *)cmd;
         close(rcmd->fd);
         if (open(rcmd->file, rcmd->mode) < 0) {
-            fprintf(stderr, "open %s failed\n", rcmd->file);
+            uprintf(2, "open %s failed\n", rcmd->file);
             exit(1);
         }
         runcmd(rcmd->cmd);
@@ -110,7 +128,7 @@ runcmd(struct cmd *cmd)
         lcmd = (struct listcmd *)cmd;
         if (fork1() == 0)
             runcmd(lcmd->left);
-        wait(NULL);
+        wait(0);
         runcmd(lcmd->right);
         break;
 
@@ -134,8 +152,8 @@ runcmd(struct cmd *cmd)
         }
         close(p[0]);
         close(p[1]);
-        wait(NULL);
-        wait(NULL);
+        wait(0);
+        wait(0);
         break;
 
     case BACK:
@@ -150,9 +168,9 @@ runcmd(struct cmd *cmd)
 int
 getcmd(char *buf, int nbuf)
 {
-    fprintf(stderr, "$ ");
+    uprintf(2, "$ ");
     memset(buf, 0, nbuf);
-    fgets(buf, nbuf, stdin);
+    gets(buf);
     if (buf[0] == 0)            // EOF
         return -1;
     return 0;
@@ -162,20 +180,14 @@ int
 main(int argc, char *argv[])
 {
     for (int i = 0; i < argc; i++) {
-        printf("sh: argv[%d] = '%s'\n", i, argv[i]);
-    }
-    char *test_env = getenv("TEST_ENV");
-    if (test_env) {
-        printf("sh: testenv = '%s'\n", test_env);
-    } else {
-        printf("sh: testenv not found!\n");
+        uprintf(1, "sh: argv[%d] = '%s'\n", i, argv[i]);
     }
 
     static char buf[100];
     int fd;
 
     // Ensure that three file descriptors are open.
-    while ((fd = open("console", O_RDWR)) >= 0) {
+    while ((fd = open("console", 2)) >= 0) {
         if (fd >= 3) {
             close(fd);
             break;
@@ -188,19 +200,20 @@ main(int argc, char *argv[])
             // Chdir must be called by the parent, not the child.
             buf[strlen(buf) - 1] = 0;   // chop \n
             if (chdir(buf + 3) < 0)
-                fprintf(stderr, "cannot cd %s\n", buf + 3);
+                uprintf(2, "cannot cd %s\n", buf + 3);
             continue;
         }
         if (fork1() == 0)
             runcmd(parsecmd(buf));
-        wait(NULL);
+        wait(0);
     }
+    exit(0);
 }
 
 void
 panic(char *s)
 {
-    fprintf(stderr, "%s\n", s);
+    uprintf(2, "%s\n", s);
     exit(1);
 }
 
@@ -359,7 +372,7 @@ parsecmd(char *s)
     cmd = parseline(&s, es);
     peek(&s, es, "");
     if (s != es) {
-        fprintf(stderr, "leftovers: %s\n", s);
+        uprintf(2, "leftovers: %s\n", s);
         panic("syntax");
     }
     nulterminate(cmd);
@@ -408,13 +421,13 @@ parseredirs(struct cmd *cmd, char **ps, char *es)
             panic("missing file for redirection");
         switch (tok) {
         case '<':
-            cmd = redircmd(cmd, q, eq, O_RDONLY, 0);
+            cmd = redircmd(cmd, q, eq, 0, 0);  // O_RDONLY = 0
             break;
         case '>':
-            cmd = redircmd(cmd, q, eq, O_WRONLY | O_CREAT, 1);
+            cmd = redircmd(cmd, q, eq, 1, 1);  // O_WRONLY|O_CREAT = 1
             break;
         case '+':              // >>
-            cmd = redircmd(cmd, q, eq, O_WRONLY | O_CREAT, 1);
+            cmd = redircmd(cmd, q, eq, 1, 1);  // O_WRONLY|O_CREAT = 1
             break;
         }
     }

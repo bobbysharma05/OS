@@ -9,4 +9,3 @@ OBJCOPY := $(CROSS)objcopy
 STRIP := $(CROSS)strip
 
 QEMU := qemu-system-aarch64
-

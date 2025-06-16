@@ -5,6 +5,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <sys/stat.h>
 
 typedef uint8_t uchar;
 typedef uint16_t ushort;
@@ -15,6 +16,7 @@ typedef uint32_t uint;
 #define stat xv6_stat           // avoid clash with host struct stat
 #define sleep xv6_sleep
 #include "../../../inc/fs.h"
+#undef stat
 
 #ifndef static_assert
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
@@ -86,6 +88,10 @@ main(int argc, char *argv[])
         exit(1);
     }
 
+    printf("DEBUG: NDIRECT=%d, NINDIRECT=%d, MAXFILE=%d\n", NDIRECT, NINDIRECT, MAXFILE);
+    printf("DEBUG: sizeof(struct dinode)=%lu, BSIZE=%d\n", sizeof(struct dinode), BSIZE);
+    printf("DEBUG: BSIZE %% sizeof(struct dinode) = %d\n", BSIZE % sizeof(struct dinode));
+
     assert((BSIZE % sizeof(struct dinode)) == 0);
     assert((BSIZE % sizeof(struct dirent)) == 0);
 
@@ -149,6 +155,13 @@ main(int argc, char *argv[])
         if ((fd = open(path, 0)) < 0) {
             perror(argv[i]);
             exit(1);
+        }
+
+        // Get file size for debugging
+        struct stat file_stat;
+        if (fstat(fd, &file_stat) == 0) {
+            printf("DEBUG: File '%s' size: %ld bytes, blocks needed: %ld\n", 
+                   argv[i], file_stat.st_size, (file_stat.st_size + BSIZE - 1) / BSIZE);
         }
 
         // Skip leading _ in name when writing to file system.
@@ -283,6 +296,7 @@ iappend(uint inum, void *xp, int n)
     // printf("append inum %d at off %d sz %d\n", inum, off, n);
     while (n > 0) {
         fbn = off / BSIZE;
+        printf("DEBUG: inum=%d, fbn=%d, MAXFILE=%d, off=%d, n=%d\n", inum, fbn, MAXFILE, off, n);
         assert(fbn < MAXFILE);
         if (fbn < NDIRECT) {
             if (xint(din.addrs[fbn]) == 0) {

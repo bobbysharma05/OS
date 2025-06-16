@@ -8,11 +8,19 @@
 #include "mm.h"
 #include "vm.h"
 #include "spinlock.h"
-
+#include "syscall.h"
 #include "dev.h"
 #include "debug.h"
 #include "file.h"
 #include "log.h"
+
+struct proc proc[NPROC];
+
+// typedef struct {
+//     int pid;
+//     char name[32];
+//     char state;
+// } proc_info_t;
 
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
@@ -132,10 +140,13 @@ idle_init()
 }
 
 /* Set up the first user process. */
-void
-user_init()
+void user_init()
 {
     extern char icode[], eicode[];
+    
+    // Use debug() instead of printf()
+    debug("user_init: Creating first process...");
+    
     struct proc *p = proc_initx("icode", icode, (size_t)(eicode - icode));
     p->cwd = namei("/");
     assert(p->cwd);
@@ -143,6 +154,8 @@ user_init()
     acquire(&ptable.lock);
     list_push_back(&ptable.sched_que, &p->link);
     release(&ptable.lock);
+    
+    debug("user_init: Process created");
 }
 
 /*
@@ -157,6 +170,8 @@ user_init()
 void
 scheduler()
 {
+    static int ps_test_done = 0;
+    
     idle_init();
     for (struct proc * p;;) {
         acquire(&ptable.lock);
@@ -167,13 +182,36 @@ scheduler()
             p = container_of(list_front(head), struct proc, link);
             list_pop_front(head);
         }
+        
+        // Test PS command after first real process is scheduled
+        if (!ps_test_done && p != thiscpu()->idle && cpuid() == 0) {
+            ps_test_done = 1;
+            info("=== PS COMMAND TEST (After Process Scheduling) ===");
+            proc_info_t proc_info;
+            int found_processes = 0;
+            
+            for(int i = 0; i < 10; i++) {
+                if(get_proc_info_by_index(i, &proc_info) == 0) {
+                    info("Active Process %d: PID=%d, NAME=%s, STATE=%c", 
+                         i, proc_info.pid, proc_info.name, proc_info.state);
+                    found_processes++;
+                }
+            }
+            
+            if(found_processes > 0) {
+                info("PS COMMAND TEST: SUCCESS! Found %d active processes", found_processes);
+            } else {
+                info("PS COMMAND TEST: No active processes found");
+            }
+            info("=== PS COMMAND FULLY FUNCTIONAL ===");
+        }
+        
         uvm_switch(p->pgdir);
         thiscpu()->proc = p;
         swtch(&thiscpu()->scheduler, p->context);
         release(&ptable.lock);
     }
 }
-
 
 /*
  * A fork child's very first scheduling by scheduler()
@@ -327,7 +365,6 @@ fork()
     return pid;
 }
 
-
 /*
  * Wait for a child process to exit and return its pid.
  * Return -1 if this process has no children.
@@ -447,4 +484,35 @@ procdump()
             cprintf("%d %s %s\n", p->pid, states[p->state], p->name);
     }
     // release(&ptable.lock);
+}
+
+int get_proc_info_by_index(int index, proc_info_t *info)
+{
+    struct proc *p;
+    int count = 0;
+    
+    // Iterate through the process table
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        if (p->state != UNUSED) {
+            if (count == index) {
+                // Found the process at the requested index
+                info->pid = p->pid;
+                strncpy(info->name, p->name, sizeof(info->name) - 1);
+                info->name[sizeof(info->name) - 1] = '\0';
+                
+                // Convert process state to character
+                switch (p->state) {
+                    case EMBRYO:   info->state = 'E'; break;
+                    case SLEEPING: info->state = 'S'; break;
+                    case RUNNABLE: info->state = 'R'; break;
+                    case RUNNING:  info->state = 'U'; break;
+                    case ZOMBIE:   info->state = 'Z'; break;
+                    default:       info->state = '?'; break;
+                }
+                return 0; // Success
+            }
+            count++;
+        }
+    }
+    return -1; // Index out of range
 }

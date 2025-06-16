@@ -7,6 +7,7 @@
 #include "trap.h"
 #include "spinlock.h"
 #include "list.h"
+#include "syscall.h"
 
 #define NPROC           100
 #define NCPU            4
@@ -99,4 +100,6 @@ int  wait();
 int  fork();
 void procdump();
 
+int get_proc_info_by_index(int index, proc_info_t *info);
 #endif
+extern struct proc proc[NPROC];

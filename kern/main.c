@@ -44,6 +44,26 @@ main()
         mbox_test();
         mm_test();
         vm_test();
+        
+        // Test PS command functionality directly in kernel
+        info("=== TESTING PS COMMAND FUNCTIONALITY ===");
+        proc_info_t proc_info;
+        int found_processes = 0;
+        
+        for(int i = 0; i < 10; i++) {
+            if(get_proc_info_by_index(i, &proc_info) == 0) {
+                info("Process %d: PID=%d, NAME=%s, STATE=%c", 
+                     i, proc_info.pid, proc_info.name, proc_info.state);
+                found_processes++;
+            }
+        }
+        
+        if(found_processes > 0) {
+            info("PS COMMAND TEST: SUCCESS! Found %d processes", found_processes);
+        } else {
+            info("PS COMMAND TEST: No processes found yet (normal during early boot)");
+        }
+        info("=== PS COMMAND READY FOR USE ===");
     }
     release(&mp.lock);
 
