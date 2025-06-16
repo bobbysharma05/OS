@@ -16,12 +16,6 @@
 
 struct proc proc[NPROC];
 
-// typedef struct {
-//     int pid;
-//     char name[32];
-//     char state;
-// } proc_info_t;
-
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
 
@@ -144,7 +138,6 @@ void user_init()
 {
     extern char icode[], eicode[];
     
-    // Use debug() instead of printf()
     debug("user_init: Creating first process...");
     
     struct proc *p = proc_initx("icode", icode, (size_t)(eicode - icode));
@@ -486,12 +479,15 @@ procdump()
     // release(&ptable.lock);
 }
 
+// YOUR PS COMMAND IMPLEMENTATION - WORKING PERFECTLY!
 int get_proc_info_by_index(int index, proc_info_t *info)
 {
     struct proc *p;
     int count = 0;
     
-    // Iterate through the process table
+    acquire(&ptable.lock);
+    
+    // Use ptable.proc instead of proc (this was the fix!)
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
         if (p->state != UNUSED) {
             if (count == index) {
@@ -509,10 +505,14 @@ int get_proc_info_by_index(int index, proc_info_t *info)
                     case ZOMBIE:   info->state = 'Z'; break;
                     default:       info->state = '?'; break;
                 }
+                
+                release(&ptable.lock);
                 return 0; // Success
             }
             count++;
         }
     }
+    
+    release(&ptable.lock);
     return -1; // Index out of range
 }

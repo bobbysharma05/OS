@@ -1,6 +1,7 @@
 include ../config.mk
 
 LIBC_A = ../libc/lib/libc.a
+
 LIBC_DEPS = $(LIBC_A)
 
 OBJ = ../obj/usr
@@ -23,7 +24,27 @@ CFLAGS = -std=gnu99 -Os -MMD -MP -static -z max-page-size=4096 \
 
 LDFLAGS = -L../libc/lib/ -nostartfiles ../libc/lib/crt1.o ../libc/lib/crti.o -lc ../libc/lib/crtn.o
 
+
 USR_CC := $(CC)
+
+# Compiler flags
+CFLAGS = -std=gnu99 -O3 -MMD -MP -static -z max-page-size=4096 \
+  -fno-omit-frame-pointer \
+  -I. \
+  -I.. \
+  -I../.. \
+  -I../libc/include/ \
+  -I../inc \
+  -I../libc/obj/include/ \
+  -I../libc/arch/aarch64/ \
+  -I../libc/arch/generic/
+
+LDFLAGS = -L../libc/lib/ -nostartfiles ../libc/lib/crt1.o ../libc/lib/crti.o -lc ../libc/lib/crtn.o
+
+USR_CC := $(CC)
+
+# Object files for syscall.c and usys.S
+SYSCALL_OBJS = $(OBJ)/syscall.o $(OBJ)/usys.o
 
 all:
 	$(MAKE) -C ../libc
@@ -38,6 +59,7 @@ $(OBJ)/syscall.o: syscall.c
 $(OBJ)/usys.o: usys.S
 	mkdir -p $(OBJ)
 	$(USR_CC) $(CFLAGS) -c -o $@ $<
+
 
 # Rule for ps program
 $(BIN)/ps: src/ps/ps.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_DEPS)
@@ -54,7 +76,15 @@ $(BIN)/sh: src/sh/main.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_DEPS)
 	mkdir -p $(dir $@)
 	$(USR_CC) $(CFLAGS) $(LDFLAGS) -o $@ src/sh/main.c $(OBJ)/syscall.o $(OBJ)/usys.o $(LIBC_A)
 
+
+
 clean:
 	rm -rf $(OBJ) $(BIN)
 
 .PHONY: all clean
+
+UPROGS = \
+    _init \
+    _sh \
+    _ps \
+    # Add other programs here

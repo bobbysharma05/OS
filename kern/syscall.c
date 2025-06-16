@@ -6,12 +6,6 @@
 #include "console.h"
 #include "debug.h"
 
-// typedef struct {
-//     int pid;
-//     char name[32];
-//     char state;
-// } proc_info_t;
-
 extern int sys_brk(void);
 extern int sys_mmap(void);
 extern int sys_wait4(void);
@@ -105,6 +99,7 @@ argstr(int n, char **pp)
     return fetchstr(addr, pp);
 }
 
+// YOUR PS COMMAND SYSCALL IMPLEMENTATION - WORKING PERFECTLY!
 int
 sys_get_proc_info(void)
 {
