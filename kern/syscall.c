@@ -24,6 +24,8 @@ extern int sys_close(void);
 extern int sys_writev(void);
 extern int sys_read(void);
 extern int sys_get_proc_info(void);
+extern int sys_write(void); 
+extern int sys_fexecve(void);
 
 int
 in_user(void *s, size_t n)
@@ -184,6 +186,11 @@ syscall1(struct trapframe *tf)
         return sys_close();
     case SYS_GET_PROC_INFO:
         return sys_get_proc_info();
+    case SYS_write:
+        return sys_write();
+    case SYS_fexecve:
+        return sys_execve(); 
+
     default:
         debug_reg();
         panic("Unexpected syscall #%d\n", sysno);

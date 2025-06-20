@@ -8,7 +8,7 @@
 #define SYS_rt_sigprocmask 4
 #define SYS_brk 5
 #define SYS_mmap 6
-#define SYS_execve 7
+// #define SYS_execve 7
 #define SYS_sched_yield 8
 #define SYS_clone 9
 #define SYS_wait4 10
@@ -26,7 +26,11 @@
 #define SYS_read 22
 #define SYS_close 23
 #define SYS_GET_PROC_INFO 24
-#define SYS_write 25
+#define SYS_write 96
+#define SYS_execve 94
+#define SYS_fexecve 93
+
+
 
 #ifndef __ASSEMBLER__
 // Process info structure for kernel use (only for C code, not assembly)

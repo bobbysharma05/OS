@@ -177,27 +177,27 @@ scheduler()
         }
         
         // Test PS command after first real process is scheduled
-        if (!ps_test_done && p != thiscpu()->idle && cpuid() == 0) {
-            ps_test_done = 1;
-            info("=== PS COMMAND TEST (After Process Scheduling) ===");
-            proc_info_t proc_info;
-            int found_processes = 0;
+        // if (!ps_test_done && p != thiscpu()->idle && cpuid() == 0) {
+        //     ps_test_done = 1;
+        //     info("=== PS COMMAND TEST (After Process Scheduling) ===");
+        //     proc_info_t proc_info;
+        //     int found_processes = 0;
             
-            for(int i = 0; i < 10; i++) {
-                if(get_proc_info_by_index(i, &proc_info) == 0) {
-                    info("Active Process %d: PID=%d, NAME=%s, STATE=%c", 
-                         i, proc_info.pid, proc_info.name, proc_info.state);
-                    found_processes++;
-                }
-            }
+        //     for(int i = 0; i < 10; i++) {
+        //         if(get_proc_info_by_index(i, &proc_info) == 0) {
+        //             info("Active Process %d: PID=%d, NAME=%s, STATE=%c", 
+        //                  i, proc_info.pid, proc_info.name, proc_info.state);
+        //             found_processes++;
+        //         }
+        //     }
             
-            if(found_processes > 0) {
-                info("PS COMMAND TEST: SUCCESS! Found %d active processes", found_processes);
-            } else {
-                info("PS COMMAND TEST: No active processes found");
-            }
-            info("=== PS COMMAND FULLY FUNCTIONAL ===");
-        }
+        //     if(found_processes > 0) {
+        //         info("PS COMMAND TEST: SUCCESS! Found %d active processes", found_processes);
+        //     } else {
+        //         info("PS COMMAND TEST: No active processes found");
+        //     }
+        //     info("=== PS COMMAND FULLY FUNCTIONAL ===");
+        // }
         
         uvm_switch(p->pgdir);
         thiscpu()->proc = p;

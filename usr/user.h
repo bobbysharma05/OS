@@ -27,5 +27,6 @@ int chdir(const char*);
 int fork(void);
 char* strchr(const char*, int);
 int write(int fd, const void *buf, size_t count);
+int mknod(const char *pathname, int mode, int dev); 
 
 #endif

@@ -1,24 +1,23 @@
-// #include "../../user.h"
-// #include <stdlib.h>
-
-// int main(void) 
-// {
-//     uprintf(1, "IITGN OS Shell\n");
-//     uprintf(1, "Type ps to list processes\n");
-    
-//     while(1) {
-//         uprintf(1, "$ ");
-//         // Simple shell - just wait and print prompt
-//         // In a real shell, you would read commands here
-//         char c;
-//         // For now, just loop to show the prompt
-//         for(int i = 0; i < 1000000; i++); // Simple delay
-//     }
-//     exit(0);
-// }
-
 #include "../../user.h"
-int main(void) {
-    while(1) { }
-    return 0;
+
+int main(void)
+{
+    int pid, wpid;
+    
+    uprintf(1, "init: starting shell\n");
+    
+    while(1) {
+        pid = fork();
+        if(pid < 0) {
+            uprintf(1, "init: fork failed\n");
+            exit(1);
+        }
+        if(pid == 0) {
+            exec("sh", (char*[]){"sh", 0});
+            uprintf(1, "init: exec sh failed\n");
+            exit(1);
+        }
+        while((wpid = wait(0)) >= 0 && wpid != pid)
+            uprintf(1, "zombie!\n");
+    }
 }
